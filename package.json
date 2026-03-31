@@ -1,0 +1,18 @@
+{
+  "name": "energydna-platform",
+  "version": "1.0.0",
+  "description": "EnergyDNA Fullstack Application",
+  "scripts": {
+    "postinstall": "cd contracts && npm install --legacy-peer-deps && cd ../backend && npm install && cd ../frontend && npm install --legacy-peer-deps",
+    "dev:node": "cd contracts && npx hardhat node",
+    "dev:deploy": "cd contracts && npx hardhat run scripts/deploy.js --network localhost",
+    "dev:backend": "cd backend && node --watch server.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:node\" \"wait-on tcp:8545 && npm run dev:deploy\" \"wait-on tcp:8545 && wait-on backend/.deploy-ready && npm run dev:backend\" \"npm run dev:frontend\"",
+    "predev": "npx shx rm -f backend/.deploy-ready"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  }
+}

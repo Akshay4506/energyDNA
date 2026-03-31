@@ -1,0 +1,37 @@
+# 🏗️ EnergyDNA Global Ignore Rules
+
+# Node.js
+**/node_modules/
+**/npm-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+
+# Hardhat & Smart Contracts
+**/artifacts/
+**/cache/
+**/typechain/
+**/typechain-types/
+contracts/hardhat-network-helper.log
+
+# Frontend & Build Artifacts
+**/dist/
+**/.vite/
+**/out/
+**/build/
+
+# Environment & Secrets (CRITICAL)
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.production
+**/.env.test
+
+# Logs & OS Files
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+
+# Temporary Data
+**/temp/
+**/tmp/
