@@ -99,6 +99,10 @@ EnergyDNA/
 └── scripts/        # Management & Maintenance Scripts
 ```
 
+## 📄 License
+
+This project is licensed under the MIT - see the [LICENSE](LICENSE) file for details.
+
 ---
 
 **Built with 💚 for the Future of Renewable Energy.**
