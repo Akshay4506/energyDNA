@@ -61,19 +61,7 @@ cd ../contracts
 npm install
 ```
 
-### 3. Environment Setup
-Create a `.env` file in the `backend/` directory:
-
-```env
-PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/energyDNA-wind
-JWT_SECRET=your_super_secret_key
-CONTRACT_ADDRESS=0x... (from deployment)
-PRIVATE_KEY=your_platform_owner_private_key
-RPC_URL=http://127.0.0.1:8545
-```
-
-### 4. Running the Application
+### 3. Running the Application
 
 1. **Start Local Blockchain (Hardhat):**
    ```bash
@@ -110,11 +98,6 @@ EnergyDNA/
 ├── frontend/       # React (Vite) Application
 └── scripts/        # Management & Maintenance Scripts
 ```
-
----
-
-## ⚖️ License
-Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
