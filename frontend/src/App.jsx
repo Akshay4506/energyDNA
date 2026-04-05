@@ -119,7 +119,13 @@ function AppLayout() {
                       {/* Notifications Header */}
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <div className="flex items-center gap-2 text-slate-800 dark:text-white font-bold">
-                          <Bell size={16} /> Notifications
+                          <Bell size={16} /> 
+                          <span>Notifications</span>
+                          {unreadCount > 0 && (
+                            <span className="flex items-center justify-center bg-emerald-500 text-white text-[10px] w-5 h-5 rounded-full shadow-sm">
+                              {unreadCount}
+                            </span>
+                          )}
                         </div>
                         {unreadCount > 0 && (
                           <button onClick={clearNotifications} className="text-[10px] text-indigo-500 hover:text-indigo-600 font-bold uppercase tracking-wider">Clear All</button>

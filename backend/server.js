@@ -20,6 +20,7 @@ app.use(express.json());
 
 const EnergyToken = require('./models/EnergyToken');
 const User = require('./models/User');
+const { reconcileBlockchainWithDB } = require('./blockchain-sync');
 
 // JWT Auth Middleware
 function authMiddleware(req, res, next) {
@@ -39,55 +40,12 @@ function authMiddleware(req, res, next) {
 mongoose.connect(process.env.MONGO_URI)
     .then(async () => {
         console.log('MongoDB Custom Connected (energyDNA-wind)');
+        
+        // 🔄 Sync DB with Blockchain on startup
+        await reconcileBlockchainWithDB();
+
         const tokens = await EnergyToken.find({});
         console.log(`[DIAG] TOTAL TOKENS IN DB: ${tokens.length}`);
-        
-        // DEEP AUTO-SYNC — DISABLED for fresh demo
-        // To re-enable, uncomment the block below
-        /*
-        try {
-            const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://127.0.0.1:8545');
-            const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-            const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, [
-                "function ownerOf(uint256) view returns (address)",
-                "function mintEnergyToken(address,string,uint256,string,string,string,string,string) public",
-                "function transferEnergyToken(address,address,uint256) public"
-            ], wallet);
-
-            const wp = await User.findOne({ role: 'windplant' });
-            const adani = await User.findOne({ email: 'adani@gmail.com' });
-            if (!wp || !adani) throw new Error("Users not found in DB.");
-
-            const now = Date.now();
-
-            try {
-                await contract.ownerOf(0);
-                console.log('[SYNC] Token #0 already healthy.');
-            } catch (e) {
-                console.log('[SYNC] Token #0 missing. Minting...');
-                const tx0 = await contract.mintEnergyToken(wallet.address, 'T1', now, '5.0', 'N', '100', 'h0_onchain', 'u0');
-                await tx0.wait();
-                await EnergyToken.findOneAndUpdate({ tokenId: 0 }, { tokenId: 0, energyDnaHash: 'h0_onchain', turbineId: 'T1', timestamp: now.toString(), energyOutput: '100', windSpeed: '5.0', windDirection: 'N', owner: wallet.address.toLowerCase(), ownerUserId: wp._id, state: 'Minted' }, { upsert: true });
-            }
-
-            try {
-                await contract.ownerOf(1);
-                console.log('[SYNC] Token #1 already healthy.');
-            } catch (e) {
-                console.log('[SYNC] Token #1 missing. Minting and Transferring...');
-                const tx1 = await contract.mintEnergyToken(wallet.address, 'T1', now + 1000, '5.67', 'NE', '120', 'h1_onchain', 'u1');
-                await tx1.wait();
-                const tx2 = await contract.transferEnergyToken(wallet.address, adani.walletAddress, 1);
-                await tx2.wait();
-                await EnergyToken.findOneAndUpdate({ tokenId: 1 }, { tokenId: 1, energyDnaHash: 'h1_onchain', turbineId: 'T1', timestamp: (now + 1000).toString(), energyOutput: '120', windSpeed: '5.67', windDirection: 'NE', owner: adani.walletAddress.toLowerCase(), ownerUserId: adani._id, state: 'Transferred' }, { upsert: true });
-            }
-
-            console.log('[SYNC] Blockchain synchronization verified.');
-        } catch (errSync) {
-            console.error('[SYNC_ERROR] Auto-sync failed:', errSync.message);
-        }
-        */
-        console.log('[SYNC] Auto-sync disabled for fresh demo.');
     })
     .catch(err => console.error('MongoDB connection error:', err));
 
