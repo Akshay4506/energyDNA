@@ -81,10 +81,28 @@ npm install
    ```
 
 4. **Start Frontend Development Server:**
-   ```bash
-   cd ../frontend
-   npm run dev
-   ```
+    ```bash
+    cd ../frontend
+    npm run dev
+    ```
+
+---
+
+## 🦊 MetaMask Setup
+
+To interact with the **EnergyDNA** blockchain, you must configure MetaMask to connect to your local Hardhat node.
+
+### 1. **Add Custom Network**
+1. Open MetaMask > Networks > **Add Network** > **Add a network manually**.
+2. **Network Name**: `EnergyDNA Local`
+3. **New RPC URL**: `http://127.0.0.1:8545`
+4. **Chain ID**: `1335`
+5. **Currency Symbol**: `ETH`
+
+### 2. **Import Test Account**
+1. Copy the **Private Key** of Account #0 from your `npx hardhat node` terminal output.
+2. In MetaMask, click the account icon > **Import Account**.
+3. Paste the Private Key to access **10,000 test ETH**.
 
 ---
 
