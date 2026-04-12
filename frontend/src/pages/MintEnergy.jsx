@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Zap, Wind, Database, ShieldCheck, Cpu, ExternalLink, Package, Search, Sparkles, Filter } from 'lucide-react';
+import { Zap, Wind, Database, ShieldCheck, Cpu, ExternalLink, Package, Search, Sparkles, Filter, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '../WalletContext';
 import { useAuth } from '../AuthContext';
@@ -16,6 +16,8 @@ export default function MintEnergy() {
   const [txHash, setTxHash] = useState('');
   const [searchVal, setSearchVal] = useState('');
   const [matchResult, setMatchResult] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const { account, contract, connectWallet } = useWallet();
   const { user, isWindPlant, token: authToken } = useAuth();
 
@@ -56,6 +58,34 @@ export default function MintEnergy() {
       setMyTokens(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUploadDataset = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) return toast.error("Please select a file first");
+    
+    const formData = new FormData();
+    formData.append('dataset', uploadFile);
+
+    setUploading(true);
+    try {
+      await axios.post('http://localhost:5000/upload-dataset', formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${authToken}` 
+        }
+      });
+      toast.success('Dataset uploaded and loaded seamlessly!');
+      setUploadFile(null);
+      fetchEvents(); // refresh grid
+      // reset file input
+      const fileInput = document.getElementById('datasetUpload');
+      if (fileInput) fileInput.value = '';
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Upload failed');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -265,10 +295,10 @@ export default function MintEnergy() {
                         {t.state === 'Retired' ? 'Consumed / Retired' : t.state === 'Transferred' ? 'Received' : t.state}
                       </span>
                     </div>
-                    <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400 font-mono items-center mt-2">
+                      <span className="flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold text-[10px]"><Database size={10}/> {t.turbineId || 'Platform'}</span>
                       <span className="flex items-center gap-1"><Zap size={12}/> {t.energyOutput} kW</span>
                       <span className="flex items-center gap-1"><Wind size={12}/> {t.windSpeed} m/s</span>
-                      <span>Turbine: {t.turbineId}</span>
                     </div>
                   </div>
                   <Link to={`/explorer?tokenId=${t.tokenId}`} className="text-xs text-blue-500 hover:text-blue-400 font-medium">View in Explorer →</Link>
@@ -292,13 +322,41 @@ export default function MintEnergy() {
       </div>
 
       {!account && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-xl flex items-center justify-between">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-xl flex items-center justify-between shadow-sm">
           <p className="text-amber-800 dark:text-amber-300 text-sm font-medium">⚠ Connect MetaMask wallet to mint tokens on the blockchain</p>
           <button onClick={connectWallet} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             Connect Wallet
           </button>
         </div>
       )}
+
+      {/* Upload Dataset Panel */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 flex flex-col md:flex-row gap-6 justify-between items-center relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none"><Database size={120} /></div>
+        <div className="relative z-10 w-full md:w-auto">
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg flex items-center gap-2">
+            Upload Turbine Data <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-mono">Dynamic</span>
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Upload CSV datasets to inject new generation events. Ensure the file name includes the Turbine ID (e.g., T2_data.csv).</p>
+        </div>
+        <form onSubmit={handleUploadDataset} className="flex gap-3 relative z-10 w-full md:w-auto flex-col sm:flex-row">
+          <input 
+            type="file" 
+            id="datasetUpload" 
+            accept=".csv"
+            onChange={(e) => setUploadFile(e.target.files[0])}
+            className="block w-full text-sm text-slate-600 dark:text-slate-300 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 dark:file:bg-emerald-800/60 dark:file:text-emerald-200 dark:hover:file:bg-emerald-700/80 file:rounded-lg file:transition-colors rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none bg-slate-50 dark:bg-slate-800/50 p-1 pl-0 shadow-sm"
+          />
+          <button 
+            type="submit" 
+            disabled={uploading || !uploadFile}
+            className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm whitespace-nowrap transition-all"
+          >
+            {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload size={16} />} 
+            {uploading ? "Uploading..." : "Import"}
+          </button>
+        </form>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
@@ -356,11 +414,16 @@ export default function MintEnergy() {
                             <span className="text-[10px] font-mono text-slate-400">Score: High</span>
                           </div>
                           <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{matchResult.bestSingle['Date/Time']}</p>
-                          <div className="flex items-center justify-between gap-2 overflow-hidden">
+                          <div className="flex items-center justify-between gap-2 overflow-hidden mb-2">
                             <div className="flex items-baseline gap-1">
                               <span className="text-2xl font-black text-slate-900 dark:text-white">{matchResult.bestSingle['LV ActivePower (kW)']}</span>
                               <span className="text-xs font-medium text-slate-400">kW</span>
                             </div>
+                            <span className="flex items-center gap-1 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-lg text-[10px] font-bold font-mono">
+                               <Database size={12}/> {matchResult.bestSingle.turbineId || 'T1'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-end gap-2 overflow-hidden">
                             <button 
                               onClick={() => {
                                 if (matchResult.bestSingle?.originalIndex !== undefined) {
@@ -392,7 +455,10 @@ export default function MintEnergy() {
                             {matchResult.combination.map((c, i) => (
                               <div key={i} className="flex justify-between items-center p-2 bg-white/60 dark:bg-slate-800/60 rounded-lg border border-emerald-100/50 dark:border-emerald-800/30 group/item">
                                 <div className="text-[11px] font-mono text-slate-600 dark:text-slate-300">
-                                  <span className="font-bold text-slate-900 dark:text-white">{c['LV ActivePower (kW)']} kW</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-900 dark:text-white">{c['LV ActivePower (kW)']} kW</span>
+                                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 px-1 py-0.5 rounded text-[8px] font-bold"><Database size={8} className="inline mr-0.5 mb-0.5"/>{c.turbineId || 'T1'}</span>
+                                  </div>
                                   <span className="block opacity-60 text-[9px]">{c['Date/Time']?.split(' ')[1]}</span>
                                 </div>
                                 <button 
@@ -428,7 +494,8 @@ export default function MintEnergy() {
                 <div key={idx} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors flex justify-between items-center group">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-slate-900 dark:text-white">{ev['Date/Time']}</p>
-                    <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400 font-mono items-center mt-1">
+                       <span className="flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold text-[10px]"><Database size={10}/> {ev.turbineId || 'T1'}</span>
                        <span className="flex items-center gap-1"><Zap size={12}/> {ev['LV ActivePower (kW)']} kW</span>
                        <span className="flex items-center gap-1"><Wind size={12}/> {ev['Wind Speed (m/s)']} m/s</span>
                     </div>
@@ -455,14 +522,14 @@ export default function MintEnergy() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck size={100} /></div>
-            <h3 className="font-semibold text-emerald-400 mb-2">Process Overview</h3>
-            <ol className="text-sm text-slate-300 space-y-3 relative z-10">
-              <li className="flex gap-2"><span className="text-emerald-500">1.</span> Read row from Turbine dataset</li>
-              <li className="flex gap-2"><span className="text-emerald-500">2.</span> Generate SHA-256 EnergyDNA Hash</li>
-              <li className="flex gap-2"><span className="text-emerald-500">3.</span> Sign & mint ERC721 Token via MetaMask</li>
-              <li className="flex gap-2"><span className="text-emerald-500">4.</span> Store metadata alongside token ID</li>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-900 dark:text-emerald-100 p-6 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-800/40 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 text-emerald-600 dark:text-emerald-400"><ShieldCheck size={100} /></div>
+            <h3 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-2 relative z-10">Process Overview</h3>
+            <ol className="text-sm text-emerald-700 dark:text-emerald-200/80 space-y-3 relative z-10">
+              <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 font-bold">1.</span> Read row from Turbine dataset</li>
+              <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 font-bold">2.</span> Generate SHA-256 EnergyDNA Hash</li>
+              <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 font-bold">3.</span> Sign & mint ERC721 Token via MetaMask</li>
+              <li className="flex gap-2"><span className="text-emerald-600 dark:text-emerald-400 font-bold">4.</span> Store metadata alongside token ID</li>
             </ol>
           </div>
 

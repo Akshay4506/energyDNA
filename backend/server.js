@@ -8,6 +8,7 @@ const csv = require('csv-parser');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 
 const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -61,14 +62,52 @@ const energyContract = new ethers.Contract(contractAddress, contractABI, wallet)
 // syncBlockchain removed to prevent startup crashes. Refer to standalone sync script.
 // syncBlockchain removed from here, moved to mongoose connection then() callback
 
-// Parse CSV Dataset
+// Parse CSV Datasets dynamically
 let energyEvents = [];
-fs.createReadStream('../dataset/T1.csv')
-  .pipe(csv())
-  .on('data', (data) => energyEvents.push(data))
-  .on('end', () => {
-    console.log('Dataset T1.csv parsed. Total events:', energyEvents.length);
-  });
+const datasetDir = path.resolve(__dirname, '../dataset');
+
+function loadDatasets() {
+    energyEvents = []; // clear existing
+    if (!fs.existsSync(datasetDir)) fs.mkdirSync(datasetDir);
+    
+    const files = fs.readdirSync(datasetDir).filter(f => f.endsWith('.csv'));
+    for (const file of files) {
+        // Extract Turbine ID (e.g., T1 from T1_data.csv)
+        const match = file.match(/[tT]\d+/);
+        const turbineId = match ? match[0].toUpperCase() : path.parse(file).name;
+        
+        fs.createReadStream(path.join(datasetDir, file))
+          .pipe(csv())
+          .on('data', (data) => {
+              data.turbineId = turbineId;
+              energyEvents.push(data);
+          })
+          .on('end', () => {
+              console.log(`Dataset ${file} parsed. Mapped to: ${turbineId}`);
+          });
+    }
+}
+loadDatasets(); // Load on startup
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, datasetDir),
+    filename: (req, file, cb) => cb(null, file.originalname)
+});
+const upload = multer({ storage });
+
+app.post('/upload-dataset', authMiddleware, upload.single('dataset'), async (req, res) => {
+    try {
+        if (req.userRole !== 'windplant') return res.status(403).json({ error: "Unauthorized" });
+        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+        
+        // Refresh memory pool dynamically
+        loadDatasets(); 
+        res.json({ message: "Dataset uploaded successfully!" });
+    } catch (error) {
+        console.error('[500 ERROR]', error.message); res.status(500).json({ error: error.message });
+    }
+});
 
 app.get('/dataset-events', (req, res) => {
     const sliced = energyEvents.slice(0, 100).map((ev, index) => ({
@@ -285,7 +324,7 @@ app.post('/mint-energy', async (req, res) => {
         const event = energyEvents[eventIndex];
         if (!event) return res.status(404).json({ error: "Event not found" });
 
-        const turbineId = "T1";
+        const turbineId = event.turbineId || "T1";
         const timestamp = new Date(event['Date/Time']).getTime() || Date.now();
         const windSpeed = event['Wind Speed (m/s)'];
         const windDirection = event['Wind Direction (°)'];
@@ -481,7 +520,7 @@ app.post('/prepare-mint', async (req, res) => {
         const lastToken = await EnergyToken.findOne().sort({ tokenId: -1 });
         const nextTokenId = lastToken ? lastToken.tokenId + 1 : 0;
 
-        const turbineId = "T1";
+        const turbineId = event.turbineId || "T1";
         const timestamp = new Date(event['Date/Time']).getTime() || Date.now();
         // Standardize formats for hashing
         const windSpeed = Number(event['Wind Speed (m/s)']).toFixed(2);
